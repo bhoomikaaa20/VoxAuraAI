@@ -1,7 +1,7 @@
 # VoxAuraAI — Architecture and RAG Workflow
 
 This document explains how VoxAuraAI works and why it is designed this way. It
-is written for the academic evaluation of the project.
+is written for the evaluation of this B.Tech final-year project.
 
 ## 1. Overview
 

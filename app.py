@@ -53,7 +53,7 @@ def main() -> None:
     missing = settings.missing_keys()
     if missing:
         _loading.empty()
-        st.error(f"Missing configuration: {', '.join(missing)}. Copy `.env.example` to `.env` and fill it in.")
+        st.error(f"Missing configuration: {', '.join(missing)}. Add them to the `.env` file in the project folder.")
         st.stop()
     try:
         pipeline = get_pipeline(settings)

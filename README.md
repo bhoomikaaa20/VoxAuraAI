@@ -1,11 +1,33 @@
 # 🔉 VoxAuraAI — AI-Powered Audio Understanding and Conversation
 
-VoxAuraAI turns spoken audio into something you can read, analyse and talk to.
-It transcribes a recording, cleans the transcript, generates AI insights, and
-lets you ask questions that are answered **from the recording itself** using
-Retrieval-Augmented Generation (RAG), with timestamped source references.
+> **B.Tech final-year project** · Python · Generative AI · RAG · Streamlit
 
-*MSc Artificial Intelligence — final-year project.*
+VoxAuraAI turns spoken audio into something you can read, analyse and talk to.
+Give it a recording (an upload, a live microphone recording or a YouTube link) and it will:
+
+1. **Transcribe** it with timestamps and sentence-level sentiment,
+2. **Clean** the transcript by removing filler words ("um", "like", "you know") and expanding abbreviations,
+3. **Summarise** it into a title, summary, tone, key points and action items, and
+4. **Answer questions** about it in a chat, grounded in the recording itself, with cited, timestamped sources.
+
+## At a glance
+
+| | |
+|---|---|
+| **Problem** | Long recordings (meetings, lectures, talks) are slow to review, and general chatbots answer questions about them with guesses instead of evidence. |
+| **Solution** | A single pipeline from speech-to-text to an analysis dashboard, plus a RAG chat that answers only from the transcript and shows exactly which part of the recording each answer came from. |
+| **Tech stack** | Python · Streamlit · LangChain (LCEL) · OpenAI (GPT-4o-mini, text-embedding-3-small) · ChromaDB · AssemblyAI · MySQL / SQLite · ReportLab · pytest |
+| **Scale of the work** | About 2,600 lines of application code in a layered package, and 111 automated tests that run offline with no API keys. |
+
+## Technical highlights
+
+- **Retrieval-Augmented Generation built from the ground up.** Sentence-aware chunking that keeps timestamps, one Chroma vector collection per session, and cosine-similarity retrieval. Every answer cites its sources, for example `[2] 03:15–04:02`.
+- **Question routing.** Plain top-k retrieval fails on whole-recording questions such as "What is the main topic?". In testing these scored only about 0.18 similarity against every chunk. The app classifies each question as *specific* or *analytical* and chooses the context to match: the full transcript, the top-k chunks, or the top-k chunks plus a sample spread across the whole recording.
+- **Hallucination control.** Analytical answers are split into *Answer / Evidence / Interpretation*. The evidence must be quoted and cited, and the interpretation must be hedged and state a confidence level. Chat history is never stored in the vector database, so the model can't treat its own earlier answers as evidence.
+- **Map-reduce summarisation**, so recordings of any length fit within the model's context window.
+- **Rule-based NLP for filler words.** Context rules tell "So *like* we should go" (a filler) apart from "I *like* pizza" (a verb). The rules are configurable in JSON and checked against real speech-to-text output.
+- **Clean architecture.** Only the UI layer imports Streamlit. Ingestion, analysis and storage are plain Python, so the whole pipeline is unit-tested with a fake LLM and a deterministic embedding model.
+- **Production touches.** A MySQL connection pool with a SQLite fallback, automatic schema migration, friendly error messages, a branded PDF report export, and URLs that keep the current view across refreshes and bookmarks.
 
 ## Features
 
@@ -33,12 +55,17 @@ python -m venv .venv
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Configure
-copy .env.example .env          # Windows  (cp on macOS / Linux)
-#    then edit .env and add ASSEMBLYAI_API_KEY and OPENAI_API_KEY
+# 3. Configure: create a file named .env in the project folder (see below)
 
 # 4. Run
 streamlit run app.py
+```
+
+Minimal `.env` file (it holds your secrets and is git-ignored, so never commit it):
+
+```ini
+ASSEMBLYAI_API_KEY=your-assemblyai-key
+OPENAI_API_KEY=your-openai-key
 ```
 
 The app opens at <http://localhost:8501>.
@@ -50,7 +77,7 @@ The app opens at <http://localhost:8501>.
 
 ### Configuration reference
 
-All settings are environment variables (see `.env.example`):
+All settings are read from the `.env` file (or from environment variables). Only the two API keys are required:
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -104,7 +131,6 @@ VoxAuraAI/
 ├── docs/ARCHITECTURE.md        # Architecture and RAG workflow
 ├── samples/                    # Sample inputs to try the app with
 ├── .streamlit/config.toml      # Streamlit theme
-├── .env.example                # Configuration template (copy to .env)
 └── requirements.txt
 ```
 
