@@ -1,0 +1,14 @@
+{
+  "_comment": "fillers: hesitation sounds that are always fillers. contextual_fillers: words/phrases that are only fillers when set off by commas or sentence boundaries (e.g. 'It was, like, huge' but not 'I like pizza').",
+  "fillers": [
+    "um", "umm", "ummm", "uh", "uhh", "uhhh", "uhm", "er", "err", "erm",
+    "ah", "ahh", "ahhh", "oh", "ohh", "hmm", "hmmm", "mm", "mmm", "eh"
+  ],
+  "contextual_fillers": [
+    "you know", "I mean", "like", "you see", "sort of", "kind of",
+    "basically", "actually", "literally", "honestly", "obviously",
+    "so yeah", "and stuff", "or something", "or whatever", "right",
+    "okay so", "well", "anyway", "I guess", "I suppose", "let's see",
+    "how do I put it", "you know what I mean"
+  ]
+}

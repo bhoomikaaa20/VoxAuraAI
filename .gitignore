@@ -1,0 +1,13 @@
+.env
+credentials.txt
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
+data/
+vectorstore/
+*.log
+*.mp3
+*.wav
+*.m4a
+chat_history.*

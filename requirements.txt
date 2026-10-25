@@ -1,0 +1,19 @@
+# User interface
+streamlit>=1.40,<2          # 1.40+ provides st.audio_input for live recording
+
+# Speech-to-text and audio input
+requests>=2.31
+yt-dlp>=2024.10.7
+
+# GenAI / RAG
+langchain-core>=0.3,<0.4
+langchain-openai>=0.2,<0.4
+langchain-chroma>=0.1.4,<0.3
+chromadb>=0.5,<0.7
+
+# Storage and configuration
+mysql-connector-python>=9.0
+python-dotenv>=1.0
+
+# Testing
+pytest>=8.0
