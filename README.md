@@ -14,7 +14,7 @@ Give it a recording (an upload, a live microphone recording or a YouTube link) a
 
 **Overview:** AI summary, tone, key points, action items, speaking-rate KPIs, filler-word chart and sentiment breakdown.
 
-![Overview page with AI insights and speech analytics]("docs/images/overview.png")
+![Overview page with AI insights and speech analytics](docs/images/overview.png)
 
 <table>
   <tr>
