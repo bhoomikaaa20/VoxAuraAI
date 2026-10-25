@@ -137,40 +137,4 @@ VoxAuraAI/
 Runtime data (SQLite database, Chroma vector store, downloaded audio) is written
 to `data/`, which is git-ignored.
 
-## Running the tests
-
-```bash
-pytest
-```
-
-The tests need **no API keys or network access**. They use a small
-deterministic bag-of-words embedding and a fake chat model, so the real
-chunking, Chroma indexing, retrieval, prompt construction, database and
-pipeline code all run. The tests cover:
-
-* fillers: hesitations, discourse markers with and without commas ("So like we…", "And you know I…"), repeated words, the same words used with their real meaning ("I like pizza", "I mean it."), real AssemblyAI output, and "U.S."/"us" never counted as fillers
-* the PDF report: valid output, transcript appendix, minimal sessions, and escaping of unusual characters
-* abbreviations: chat shorthand, acronyms explained once, and "ATM"/"Vitamin K" left alone
-* transcript uploads: encodings (UTF-8 BOM, UTF-16, cp1252), SRT/VTT timestamps, and validation errors
-* recordings: valid, too short, silent and corrupt files
-* chunking, retrieval, question routing (full transcript / top-k / coverage sample), and keeping chat history out of the retrieved context
-* insights parsing, and choosing between a single call and map-reduce
-* database round trips and upgrading tables from the old schema
-* configuration: `.env` edits (such as a corrected API key) apply on the next refresh, without a restart
-* the full pipeline (audio, recording and text) through to automatic insights and a cited answer
-* **UI tests** (`tests/test_app.py`) that drive the real Streamlit app with `AppTest`: the whole text-upload flow, clicking suggested questions (they answer and stay visible), switching sessions, and error messages
-
-## Limitations
-
-* Transcription and LLM calls need an internet connection and paid API keys.
-* Tone and emotion are inferred from the words and AssemblyAI's text-based sentiment model. The app does not analyse pitch or voice, and answers say so when it matters.
-* Sentiment analysis and filler detection (`disfluencies`) are English-only features of AssemblyAI.
-* Discourse-marker rules look only at the neighbouring words, not at grammar. Ambiguous uses are deliberately left alone. For example, "and like the food was cold" is not flagged, because "like the…" is usually a comparison.
-* The PDF uses the built-in Helvetica font, so characters outside Western European text (for example emoji) are replaced with "?".
-* Question routing uses keywords. An unusual analytical question may be treated as specific; for short recordings this makes no difference, because the full transcript is used either way.
-* Suggested questions for very short recordings can ask about things the recording doesn't say. The chat then replies that it isn't mentioned.
-* One recording per session. Questions cannot span several recordings.
-* Very long recordings (more than about 1 hour) may exceed the MySQL `TEXT` limit of tables created by the earlier version.
-* YouTube downloads depend on `yt-dlp` and may break when YouTube changes. Keep `yt-dlp` updated.
-
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and the RAG workflow.
