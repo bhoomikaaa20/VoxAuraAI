@@ -1,6 +1,6 @@
 import pytest
 
-from voxaura.rag import (Chunk, RetrievedChunk, TranscriptChat, TranscriptIndex, cited_numbers,
+from voxaura.analysis.rag import (Chunk, RetrievedChunk, TranscriptChat, TranscriptIndex, cited_numbers,
                          classify_question, select_context)
 from tests.conftest import RecordingChatModel
 

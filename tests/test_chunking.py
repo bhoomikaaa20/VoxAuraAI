@@ -2,8 +2,8 @@ import re
 
 import pytest
 
-from voxaura.rag import chunk_segments
-from voxaura.transcription import Segment, split_sentences
+from voxaura.analysis.rag import chunk_segments
+from voxaura.ingestion.transcription import Segment, split_sentences
 
 
 def make_segments(n, length=50):

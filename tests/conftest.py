@@ -16,7 +16,7 @@ from pydantic import Field
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from voxaura.config import PROJECT_ROOT, load_settings  # noqa: E402
-from voxaura.text_cleaning import TextCleaner  # noqa: E402
+from voxaura.analysis.text_cleaning import TextCleaner  # noqa: E402
 
 
 class BagOfWordsEmbeddings(Embeddings):

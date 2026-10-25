@@ -6,13 +6,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _int(name: str, default: int) -> int:
-    value = os.getenv(name)
+def _int(name: str, value: str, default: int) -> int:
     try:
         return int(value) if value else default
     except ValueError:
@@ -56,25 +55,34 @@ class Settings:
         return missing
 
 
-def load_settings() -> Settings:
-    load_dotenv(PROJECT_ROOT / ".env")
+def load_settings(env_file: Path = PROJECT_ROOT / ".env") -> Settings:
+    # The .env file is re-read on every call and never copied into os.environ,
+    # so editing a key takes effect on the next page refresh. (load_dotenv() would
+    # keep the first value it saw until the server restarts.) Real environment
+    # variables still take precedence over the file.
+    file_values = {k: v for k, v in dotenv_values(env_file).items() if v is not None}
+
+    def env(name: str, default=""):
+        value = os.environ.get(name, file_values.get(name))
+        return default if value is None else value.strip()
+
     os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")  # Chroma usage telemetry
-    data_dir = Path(os.getenv("DATA_DIR", PROJECT_ROOT / "data"))
+    data_dir = Path(env("DATA_DIR") or PROJECT_ROOT / "data")
     return Settings(
-        assemblyai_api_key=os.getenv("ASSEMBLYAI_API_KEY", ""),
-        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-        chat_model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
-        embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
-        chunk_size=_int("CHUNK_SIZE", 800),
-        chunk_overlap=_int("CHUNK_OVERLAP", 150),
-        retrieval_k=_int("RETRIEVAL_K", 4),
-        full_context_chars=_int("FULL_CONTEXT_CHARS", 12_000),
-        db_host=os.getenv("DB_HOST", ""),
-        db_user=os.getenv("DB_USER", ""),
-        db_password=os.getenv("DB_PASSWORD", ""),
-        db_database=os.getenv("DB_DATABASE", ""),
-        sqlite_path=Path(os.getenv("SQLITE_PATH", data_dir / "voxaura.db")),
-        vectorstore_dir=Path(os.getenv("VECTORSTORE_DIR", data_dir / "vectorstore")),
-        audio_dir=Path(os.getenv("AUDIO_DIR", data_dir / "audio")),
+        assemblyai_api_key=env("ASSEMBLYAI_API_KEY"),
+        openai_api_key=env("OPENAI_API_KEY"),
+        chat_model=env("OPENAI_CHAT_MODEL") or "gpt-4o-mini",
+        embedding_model=env("OPENAI_EMBEDDING_MODEL") or "text-embedding-3-small",
+        chunk_size=_int("CHUNK_SIZE", env("CHUNK_SIZE"), 800),
+        chunk_overlap=_int("CHUNK_OVERLAP", env("CHUNK_OVERLAP"), 150),
+        retrieval_k=_int("RETRIEVAL_K", env("RETRIEVAL_K"), 4),
+        full_context_chars=_int("FULL_CONTEXT_CHARS", env("FULL_CONTEXT_CHARS"), 12_000),
+        db_host=env("DB_HOST"),
+        db_user=env("DB_USER"),
+        db_password=env("DB_PASSWORD"),
+        db_database=env("DB_DATABASE"),
+        sqlite_path=Path(env("SQLITE_PATH") or data_dir / "voxaura.db"),
+        vectorstore_dir=Path(env("VECTORSTORE_DIR") or data_dir / "vectorstore"),
+        audio_dir=Path(env("AUDIO_DIR") or data_dir / "audio"),
         config_dir=PROJECT_ROOT / "config",
     )

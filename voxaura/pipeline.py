@@ -17,18 +17,34 @@ from typing import Callable
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 
+from .analysis.insights import Insights, generate_insights
+from .analysis.rag import Chunk, TranscriptChat, TranscriptIndex, chunk_segments
+from .analysis.text_cleaning import FillerStats, TextCleaner
 from .config import Settings
 from .database import Database
-from .insights import Insights, generate_insights
-from .rag import Chunk, TranscriptChat, TranscriptIndex, chunk_segments
-from .text_cleaning import FillerStats, TextCleaner
-from .transcript_files import read_transcript
-from .transcription import AssemblyAITranscriber, Segment, format_timestamp, split_sentences
+from .errors import friendly_error
+from .ingestion.transcript_files import read_transcript
+from .ingestion.transcription import AssemblyAITranscriber, Segment, format_timestamp, split_sentences
 
 log = logging.getLogger(__name__)
 ProgressCallback = Callable[[str], None]
 
 MIN_WORDS_FOR_INSIGHTS = 5
+
+
+def session_metrics(session: dict) -> dict:
+    """Numbers shown on the insights page and in the PDF report."""
+    segments = session.get("segments") or []
+    stats = FillerStats.from_dict(session.get("filler_stats"))
+    end_ms = segments[-1].get("end_ms") if segments else None
+    minutes = end_ms / 60_000 if end_ms else None
+    return {
+        "words": len(session["text"].split()),
+        "duration": format_timestamp(end_ms) if end_ms else "—",
+        "wpm": round(stats.total_words / minutes) if minutes and minutes >= 0.25 else None,
+        "fillers": stats,
+        "sentiment": Counter(s.get("sentiment") for s in segments if s.get("sentiment")),
+    }
 
 
 def build_recording_facts(session: dict) -> str:
@@ -111,7 +127,13 @@ class VoxAuraPipeline:
         progress("Saving the session...")
         self.db.save_session(session)
         progress("Chunking and embedding the transcript into the vector database...")
-        self.build_index(session)
+        try:
+            self.build_index(session)
+        except Exception as e:  # the transcript is saved; the index is retried on the first question
+            log.exception("Indexing failed")
+            session["warnings"].append(f"The transcript is saved, but it could not be indexed for Q&A: "
+                                       f"{friendly_error(e)} It will be retried when you ask a question.")
+            return session  # insights need the same AI service, so don't try them now
 
         if len(session["text"].split()) >= MIN_WORDS_FOR_INSIGHTS:
             progress("Generating AI insights and suggested questions...")
@@ -119,8 +141,18 @@ class VoxAuraPipeline:
                 self.create_insights(session)
             except Exception as e:  # the session is still usable without insights
                 log.exception("Insight generation failed")
-                session["warnings"].append(f"AI insights could not be generated ({e}). "
-                                           "You can retry from the AI insights page.")
+                session["warnings"].append(f"AI insights could not be generated: {friendly_error(e)} "
+                                           "You can retry with Regenerate on the Overview page.")
+        return session
+
+    def refresh_filler_stats(self, session: dict) -> dict:
+        """Recount fillers from the stored raw text with the current rules.
+
+        Sessions saved before the filler rules were improved then show correct
+        counts too. Only the statistics change; the indexed text is left alone.
+        """
+        if session.get("raw_text"):
+            session["filler_stats"] = self.cleaner.detect_fillers(session["raw_text"]).to_dict()
         return session
 
     # ----------------------------- RAG ----------------------------- #

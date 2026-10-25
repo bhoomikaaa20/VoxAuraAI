@@ -33,17 +33,21 @@ separate apps of the earlier version each had their own copy of this logic.
 
 ### Module responsibilities
 
+The `voxaura` package is split into layers:
+
 | Module | Responsibility | Depends on Streamlit? |
 |---|---|---|
 | `config.py` | Reads settings from environment variables / `.env` | No |
-| `audio_input.py` | Saves uploads and recordings; downloads YouTube audio | No |
-| `transcription.py` | AssemblyAI REST client: upload → request → poll → sentences | No |
-| `text_cleaning.py` | Filler detection and removal, abbreviation expansion | No |
-| `rag.py` | Chunking, vector index, retrieval, grounded answer generation | No |
-| `insights.py` | Summary, key points, action items (direct or map-reduce) | No |
+| `ingestion/audio_input.py` | Saves uploads and recordings; downloads YouTube audio | No |
+| `ingestion/transcription.py` | AssemblyAI REST client: upload → request → poll → sentences | No |
+| `ingestion/transcript_files.py` | Validates and parses text and subtitle transcripts | No |
+| `analysis/text_cleaning.py` | Filler detection and removal, abbreviation expansion | No |
+| `analysis/rag.py` | Chunking, vector index, retrieval, grounded answer generation | No |
+| `analysis/insights.py` | Summary, key points, action items (direct or map-reduce) | No |
 | `database.py` | Sessions and chat history in MySQL or SQLite | No |
+| `report.py` | PDF export of the insights | No |
 | `pipeline.py` | Orchestrates the modules above | No |
-| `ui.py`, `app.py` | Streamlit interface | Yes |
+| `ui/pages.py`, `app.py` | Streamlit interface | Yes |
 
 Only the UI layer imports Streamlit. This keeps the AI logic testable on its
 own: the test suite drives the pipeline directly, without a browser.
@@ -59,11 +63,30 @@ own: the test suite drives the pipeline directly, without a browser.
    transcript split into **sentences with start/end timestamps**.
 2. **Clean.** `TextCleaner` counts fillers in the raw text (for the fluency
    statistics), then cleans each sentence:
-   * *Hesitation fillers* (`um`, `uh`, `erm`) are always removed.
-   * *Contextual fillers* (`like`, `you know`, `I mean`, `sort of`) are removed
-     only when set off by commas or at the start of a sentence followed by a
-     comma. "It was, like, huge" becomes "It was huge", while "I like pizza"
-     and "Do you know the answer?" are left alone.
+   * *Hesitations* (`um`, `uh`, `erm`) are always removed.
+   * *Discourse markers* are removed only where a **context rule** says they
+     are fillers. Each phrase in `config/fillers.json` names its rule, and
+     each rule looks at the word before, the word after, and nearby
+     punctuation:
+
+     | Rule | Phrases | Filler | Not a filler |
+     |---|---|---|---|
+     | `like` | like | "So like we should", "I was like really tired", "like 20 people", "It was, like, huge" | "I like pizza", "looks like rain", "It's like a dream" |
+     | `you_know` | you know | "And you know I felt", "It was hard, you know?" | "Do you know the answer?", "You know what happened?" |
+     | `i_mean` | I mean | "I mean it was okay", "I mean, the…" | "I mean what I say", "I mean it." |
+     | `hedge` | kind of, sort of | "it was kind of good" | "this kind of car" |
+     | `clause_start` | basically, so yeah… | "Basically we need…" | "it's basically done" |
+     | `comma` | actually, well, honestly… | "Actually, the…" | "Well done!", "as well" |
+     | `edge` | I guess, I suppose | "It was okay, I guess." | "I guess so" |
+     | `clause_end` / `tag` | or something, right | "snacks or something.", "…, right?" | "That's right." |
+
+   * *Repeated words* ("the the", "I I") keep one copy; genuine doubles such
+     as "that that" or "bye bye" are listed as allowed.
+   * The commas around a removed filler go with it ("were, um, better" →
+     "were better"), and each sentence is re-capitalised.
+
+   The rules were checked against a real AssemblyAI transcript of speech full
+   of fillers (`test_real_assemblyai_output_is_cleaned`).
    * *Chat shorthand* (`idk`, `btw`) is replaced. One- and two-letter keys
      (`u`, `k`) must be lower-case, and ALL-CAPS words are never treated as
      shorthand, so "ATM" and "Vitamin K" are safe.
@@ -255,6 +278,11 @@ mixed into the "Transcript excerpts" block. The test
 The JSON is parsed defensively: code fences are tolerated, missing fields
 default to empty, and a clear error is shown if the model does not return
 JSON. The generated title replaces the file name in the session history.
+
+**PDF export** (`report.py`) lays out the insights with ReportLab: KPIs,
+summary, tone, key points, action items, filler and sentiment bars, and
+suggested questions, with an optional transcript appendix. Every page has a
+footer stating that the content is AI-generated.
 
 ## 5. Data model
 

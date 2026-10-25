@@ -35,7 +35,7 @@ def app(tmp_path, monkeypatch):
 
 
 def add_text_session(at, text=TRANSCRIPT):
-    at.segmented_control(key="input_method").set_value("📄 Text transcript").run()
+    at.segmented_control(key="input_method").set_value("Text transcript").run()
     at.text_area[0].input(text).run()
     next(b for b in at.button if b.label == "Analyse transcript").click().run()
     assert not at.exception, at.exception
@@ -43,27 +43,27 @@ def add_text_session(at, text=TRANSCRIPT):
 
 
 def nav(at, page):
-    at.segmented_control(key="nav").set_value(page).run()
+    at.sidebar.button(key=f"nav-{page}").click().run()
     assert not at.exception, at.exception
 
 
 def test_text_transcript_goes_through_the_whole_app(app):
     add_text_session(app)
     assert not app.error, [e.value for e in app.error]
-    assert app.session_state["nav"] == "✨ Insights"  # jumps to the results
+    assert app.session_state["page"] == "overview"  # jumps to the results
     assert any("Phone launch" in b.label for b in app.sidebar.button)
     assert [c.label for c in app.checkbox] == ["Open pre-orders on Friday"]
 
-    nav(app, "📝 Transcript")
-    app.segmented_control(key="transcript_view").set_value("Original + fillers").run()
-    assert any(":orange-background[Um]" in m.value for m in app.markdown)
+    nav(app, "transcript")
+    app.segmented_control(key="transcript_view").set_value("Fillers highlighted").run()
+    assert any('<mark class="vx-filler" title="um">Um</mark>' in m.value for m in app.markdown)
     app.segmented_control(key="transcript_view").set_value("Timestamped").run()
     assert not app.exception
 
 
 def test_suggested_questions_answer_and_stay_visible(app):
     add_text_session(app)
-    nav(app, "💬 Ask AI")
+    nav(app, "chat")
     labels = [b.label for b in app.button if b.key and b.key.startswith("suggest-")]
     assert labels[0] == "How long does the battery last?"  # generated for this recording
 
@@ -80,11 +80,11 @@ def test_suggested_questions_answer_and_stay_visible(app):
 
 def test_switching_sessions_restores_each_chat(app):
     add_text_session(app)
-    nav(app, "💬 Ask AI")
+    nav(app, "chat")
     app.chat_input[0].set_value("When do pre-orders open?").run()
     first_id = app.session_state["session"]["session_id"]
 
-    nav(app, "🎧 Add audio")
+    nav(app, "new")
     add_text_session(app, "A second recording about gardening. Tomatoes need sun and water daily.")
     second_id = app.session_state["session"]["session_id"]
     assert app.session_state["messages"] == []
@@ -96,11 +96,11 @@ def test_switching_sessions_restores_each_chat(app):
 
 
 def test_every_input_method_and_empty_page_renders(app):
-    for method in ["📁 Upload audio", "🎙️ Record live", "▶️ YouTube link", "📄 Text transcript"]:
+    for method in ["Upload audio", "Record live", "YouTube link", "Text transcript"]:
         app.segmented_control(key="input_method").set_value(method).run()
         assert not app.exception, (method, app.exception)
     assert len(app.audio_input) == 0  # only rendered on the recording page
-    nav(app, "💬 Ask AI")
+    nav(app, "chat")
     assert any("No session open" in m.value for m in app.markdown)
 
 
@@ -108,3 +108,15 @@ def test_invalid_transcript_shows_error(app):
     add_text_session(app, "too short")
     assert any("too short" in e.value for e in app.error)
     assert app.session_state["session"] is None
+
+
+def test_changed_api_key_is_used_without_a_restart(app, monkeypatch):
+    import langchain_openai
+
+    keys = []
+    monkeypatch.setattr(langchain_openai, "ChatOpenAI",
+                        lambda **kw: keys.append(kw["api_key"]) or ScriptedChatModel())
+    monkeypatch.setenv("OPENAI_API_KEY", "fixed-key")  # e.g. the user corrects .env
+    app.run()
+    assert not app.exception
+    assert keys == ["fixed-key"]  # a fresh pipeline was built with the new key

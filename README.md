@@ -13,7 +13,8 @@ Retrieval-Augmented Generation (RAG), with timestamped source references.
 |---|---|
 | **Audio input** | Upload a file (mp3, wav, m4a, ogg, flac, webm, mp4), record live from the microphone, paste a YouTube link, or supply a transcript (.txt, .md, .srt, .vtt or pasted text). All of these go through one shared pipeline. |
 | **Speech-to-text** | AssemblyAI transcription with sentence timestamps and sentence-level sentiment. |
-| **Transcript cleaning** | Filler detection and removal. Hesitations (`um`, `uh`) are always fillers; contextual fillers (`like`, `you know`, `I mean`) only count when set off by commas, so "I like pizza" is untouched. Chat shorthand is expanded (`idk` → `I don't know`), and acronyms are explained on first use (`AI` → `AI (artificial intelligence)`). Dotted acronyms such as `U.S.` are never treated as fillers or shorthand. The word lists are in `config/*.json`. |
+| **Transcript cleaning** | Filler detection and removal covers three kinds of filler: hesitations (`um`, `uh`), discourse markers (`like`, `you know`, `I mean`, `kind of`, `basically`, `I guess`…) and repeated words ("the the"). Each discourse marker has a context rule that looks at the surrounding words, so "So like we should go" loses its filler while "I like pizza", "Do you know the answer?" and "This kind of car" are left alone. The commas around a removed filler are tidied up too. Chat shorthand is expanded (`idk` → `I don't know`), and acronyms are explained on first use (`AI` → `AI (artificial intelligence)`). Dotted acronyms such as `U.S.` are never treated as fillers or shorthand. The word lists and rules are in `config/*.json`. |
+| **PDF report** | A branded insights report with KPIs, summary, tone, key points, action items, filler and sentiment charts and suggested questions, plus an optional transcript appendix. |
 | **Speech analysis** | Duration, speaking rate (words per minute), fillers per 100 words, a filler chart and the sentence-sentiment breakdown. |
 | **AI insights** | Title, summary, tone, key points, action items and suggested questions, generated automatically after every upload or recording. Long transcripts are handled with map-reduce summarisation. |
 | **RAG chat** | Specific questions use top-k semantic retrieval. Broad or analytical questions (tone, intent, arguments, main topic) get the whole transcript, or for long recordings a sample covering all of it. Analytical answers are split into **Answer / Evidence / Interpretation**, so cited evidence is kept apart from the model's inferences. Sources show timestamps and similarity scores, and follow-up questions are rewritten using the chat history. |
@@ -66,39 +67,49 @@ All settings are environment variables (see `.env.example`):
 
 ## Using the app
 
-Use the navigation bar under the header to move between pages. Past sessions are listed in the sidebar.
+The sidebar holds the navigation (**Overview**, **Transcript**, **Ask AI**), the recent-session history with search, and a status panel. The address bar follows what you are viewing (`?page=overview&session=…`), so a view survives a refresh and can be bookmarked.
 
-1. **🎧 Add audio**: choose an input method. A progress bar and a step log show each stage of the pipeline, and when it finishes the app opens the insights page.
+1. **New analysis**: choose an input method. A progress bar and a step log show each stage of the pipeline, and when it finishes the app opens the Overview.
    *Live recording:* the browser asks for microphone permission. Microphones only work on `localhost` or HTTPS. Recordings that are shorter than one second or silent are rejected with an explanation.
-2. **📝 Transcript**: switch between the clean text, a timestamped view (with sentiment dots) and the original with fillers highlighted, and search within the transcript. Expand *How this transcript is indexed* to see the chunks stored in the vector database.
-3. **✨ Insights**: speech statistics, the summary, tone, key points, action items and charts. Use *Regenerate* to run the analysis again.
-4. **💬 Ask AI**: click a suggested question or type your own. The suggestions stay visible after each answer. Open *📎 Sources* under an answer to see the question type, the context strategy, and the chunks that were used and cited.
+2. **Overview**: KPI tiles (duration, words, speaking rate, fillers), summary, tone, key points, action items, a filler-word chart and a sentiment donut. **Export → Download PDF report** produces the report; turn on *Include full transcript* to add it as an appendix. **Regenerate** runs the AI analysis again.
+3. **Transcript**: switch between the clean text, a timestamped view (with sentiment dots) and the original with each filler highlighted and counted, and search within the transcript. Expand *How this transcript is indexed* to see the chunks stored in the vector database.
+4. **Ask AI**: click a suggested question or type your own. The suggestions stay visible after each answer. Badges under an answer show the question type and context strategy, and *Sources* lists the chunks that were used and cited.
 
 ## Project structure
 
 ```
 VoxAuraAI/
-├── app.py                  # Streamlit entry point (tabs + wiring)
-├── voxaura/
-│   ├── config.py           # Settings from environment variables
-│   ├── audio_input.py      # Upload / recording / YouTube → local audio file
-│   ├── transcription.py    # AssemblyAI client (upload, poll, sentences)
-│   ├── text_cleaning.py    # Filler detection/removal, abbreviation expansion
-│   ├── transcript_files.py # Validating/parsing .txt, .md, .srt, .vtt transcripts
-│   ├── rag.py              # Chunking, Chroma index, question routing, grounded answering
-│   ├── insights.py         # Summary / key points / action items (map-reduce)
-│   ├── database.py         # MySQL or SQLite persistence
-│   ├── pipeline.py         # Shared processing pipeline (no UI code)
-│   ├── ui.py               # Streamlit components for each page
-│   └── styles.css          # Visual design (typography, colours, cards)
-├── .streamlit/config.toml  # Streamlit theme
-├── config/
-│   ├── fillers.json        # Filler words to detect and remove
-│   └── abbreviations.json  # Abbreviations to expand
-├── tests/                  # pytest suite (runs offline, no API keys)
-├── docs/ARCHITECTURE.md    # Architecture and RAG workflow (for evaluation)
-└── legacy/                 # The original separate apps, kept for reference
+├── app.py                      # Streamlit entry point: settings, cached pipeline, page routing
+├── voxaura/                    # Application package
+│   ├── config.py               # Settings from environment variables / .env
+│   ├── pipeline.py             # Orchestrates ingestion → cleaning → storage → RAG → insights (no UI code)
+│   ├── database.py             # MySQL or SQLite persistence
+│   ├── report.py               # PDF export of insights (ReportLab)
+│   ├── errors.py               # Turns exceptions into friendly messages
+│   ├── ingestion/              # Getting a transcript in
+│   │   ├── audio_input.py      #   Upload / recording / YouTube → local audio file
+│   │   ├── transcription.py    #   AssemblyAI client (upload, poll, sentences + sentiment)
+│   │   └── transcript_files.py #   Validating/parsing .txt, .md, .srt, .vtt transcripts
+│   ├── analysis/               # NLP and GenAI
+│   │   ├── text_cleaning.py    #   Filler detection/removal, abbreviation expansion
+│   │   ├── insights.py         #   Summary / key points / action items (map-reduce)
+│   │   └── rag.py              #   Chunking, Chroma index, question routing, grounded answering
+│   └── ui/                     # Streamlit interface (the only code that imports Streamlit)
+│       ├── pages.py            #   Sidebar and the New / Overview / Transcript / Ask AI pages
+│       └── styles.css          #   Visual design (typography, colours, cards)
+├── config/                     # Editable word lists (no code changes needed)
+│   ├── fillers.json            #   Filler words and their context rules
+│   └── abbreviations.json      #   Chat shorthand and acronyms to expand
+├── tests/                      # pytest suite (runs offline, no API keys)
+├── docs/ARCHITECTURE.md        # Architecture and RAG workflow
+├── samples/                    # Sample inputs to try the app with
+├── .streamlit/config.toml      # Streamlit theme
+├── .env.example                # Configuration template (copy to .env)
+└── requirements.txt
 ```
+
+Runtime data (SQLite database, Chroma vector store, downloaded audio) is written
+to `data/`, which is git-ignored.
 
 ## Running the tests
 
@@ -111,13 +122,15 @@ deterministic bag-of-words embedding and a fake chat model, so the real
 chunking, Chroma indexing, retrieval, prompt construction, database and
 pipeline code all run. The tests cover:
 
-* fillers: hesitations, contextual fillers ("like", "you know") versus the same words used with their real meaning, and "U.S."/"us" never counted as fillers
+* fillers: hesitations, discourse markers with and without commas ("So like we…", "And you know I…"), repeated words, the same words used with their real meaning ("I like pizza", "I mean it."), real AssemblyAI output, and "U.S."/"us" never counted as fillers
+* the PDF report: valid output, transcript appendix, minimal sessions, and escaping of unusual characters
 * abbreviations: chat shorthand, acronyms explained once, and "ATM"/"Vitamin K" left alone
 * transcript uploads: encodings (UTF-8 BOM, UTF-16, cp1252), SRT/VTT timestamps, and validation errors
 * recordings: valid, too short, silent and corrupt files
 * chunking, retrieval, question routing (full transcript / top-k / coverage sample), and keeping chat history out of the retrieved context
 * insights parsing, and choosing between a single call and map-reduce
 * database round trips and upgrading tables from the old schema
+* configuration: `.env` edits (such as a corrected API key) apply on the next refresh, without a restart
 * the full pipeline (audio, recording and text) through to automatic insights and a cited answer
 * **UI tests** (`tests/test_app.py`) that drive the real Streamlit app with `AppTest`: the whole text-upload flow, clicking suggested questions (they answer and stay visible), switching sessions, and error messages
 
@@ -126,7 +139,8 @@ pipeline code all run. The tests cover:
 * Transcription and LLM calls need an internet connection and paid API keys.
 * Tone and emotion are inferred from the words and AssemblyAI's text-based sentiment model. The app does not analyse pitch or voice, and answers say so when it matters.
 * Sentiment analysis and filler detection (`disfluencies`) are English-only features of AssemblyAI.
-* Contextual fillers are detected from punctuation, so they depend on AssemblyAI placing the commas. "I like, really liked it" (no comma before "like") is not detected.
+* Discourse-marker rules look only at the neighbouring words, not at grammar. Ambiguous uses are deliberately left alone. For example, "and like the food was cold" is not flagged, because "like the…" is usually a comparison.
+* The PDF uses the built-in Helvetica font, so characters outside Western European text (for example emoji) are replaced with "?".
 * Question routing uses keywords. An unusual analytical question may be treated as specific; for short recordings this makes no difference, because the full transcript is used either way.
 * Suggested questions for very short recordings can ask about things the recording doesn't say. The chat then replies that it isn't mentioned.
 * One recording per session. Questions cannot span several recordings.

@@ -4,7 +4,7 @@ import wave
 
 import pytest
 
-from voxaura.audio_input import AudioInputError, check_recording, save_audio_bytes
+from voxaura.ingestion.audio_input import AudioInputError, check_recording, save_audio_bytes
 
 
 def write_wav(path, seconds, amplitude, rate=16000):

@@ -1,5 +1,5 @@
 # User interface
-streamlit>=1.40,<2          # 1.40+ provides st.audio_input for live recording
+streamlit>=1.50,<2          # sidebar icons, segmented controls, st.audio_input, width="stretch"
 
 # Speech-to-text and audio input
 requests>=2.31
@@ -14,6 +14,9 @@ chromadb>=0.5,<0.7
 # Storage and configuration
 mysql-connector-python>=9.0
 python-dotenv>=1.0
+
+# Reports
+reportlab>=4.0              # PDF export of insights
 
 # Testing
 pytest>=8.0

@@ -4,8 +4,8 @@ import pytest
 
 from voxaura.database import Database
 from voxaura.pipeline import VoxAuraPipeline, build_recording_facts
-from voxaura.transcript_files import TranscriptFileError
-from voxaura.transcription import AssemblyAITranscriber, Segment, TranscriptionError, TranscriptResult
+from voxaura.ingestion.transcript_files import TranscriptFileError
+from voxaura.ingestion.transcription import AssemblyAITranscriber, Segment, TranscriptionError, TranscriptResult
 from tests.conftest import RecordingChatModel, ScriptedChatModel
 from tests.test_audio_input import write_wav
 
@@ -62,8 +62,22 @@ def test_insight_failure_does_not_lose_the_session(settings, cleaner, embeddings
     assert pipeline.db.get_session(session["session_id"]) is not None
 
 
+def test_embedding_failure_keeps_the_session(settings, cleaner, tmp_path):
+    class BrokenEmbeddings:
+        def embed_documents(self, texts):
+            raise RuntimeError("Your API key has been invalidated.")
+
+        embed_query = embed_documents
+
+    pipeline = make_pipeline(settings, cleaner, BrokenEmbeddings(), ScriptedChatModel())
+    session = pipeline.process_audio(tmp_path / "a.mp3", "upload", "a.mp3")
+    assert "could not be indexed" in session["warnings"][0]
+    assert session["filler_stats"]["counts"] == {"um": 1, "uh": 1}  # cleaning still happened
+    assert pipeline.db.get_session(session["session_id"]) is not None
+
+
 def test_recording_flow(settings, cleaner, embeddings, tmp_path):
-    from voxaura.audio_input import check_recording
+    from voxaura.ingestion.audio_input import check_recording
 
     path = write_wav(tmp_path / "rec.wav", 2.0, 8000)
     assert check_recording(path) == pytest.approx(2.0)

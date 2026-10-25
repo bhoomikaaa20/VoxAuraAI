@@ -1,7 +1,7 @@
 import pytest
 
-from voxaura.transcript_files import TranscriptFileError, decode_text, read_transcript
-from voxaura.transcription import split_sentences
+from voxaura.ingestion.transcript_files import TranscriptFileError, decode_text, read_transcript
+from voxaura.ingestion.transcription import split_sentences
 
 SRT = """1
 00:00:01,000 --> 00:00:04,500

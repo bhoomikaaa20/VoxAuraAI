@@ -1,14 +1,52 @@
 {
-  "_comment": "fillers: hesitation sounds that are always fillers. contextual_fillers: words/phrases that are only fillers when set off by commas or sentence boundaries (e.g. 'It was, like, huge' but not 'I like pizza').",
-  "fillers": [
+  "_comment": "hesitations are always fillers. discourse_markers map a phrase to the rule that decides from the surrounding words whether it is a filler (see voxaura/text_cleaning.py for each rule). repetitions: a word said twice in a row ('the the') is a filler unless listed in allowed_repeats.",
+
+  "hesitations": [
     "um", "umm", "ummm", "uh", "uhh", "uhhh", "uhm", "er", "err", "erm",
-    "ah", "ahh", "ahhh", "oh", "ohh", "hmm", "hmmm", "mm", "mmm", "eh"
+    "ah", "ahh", "ahhh", "ohh", "hmm", "hmmm", "mm", "mmm", "eh"
   ],
-  "contextual_fillers": [
-    "you know", "I mean", "like", "you see", "sort of", "kind of",
-    "basically", "actually", "literally", "honestly", "obviously",
-    "so yeah", "and stuff", "or something", "or whatever", "right",
-    "okay so", "well", "anyway", "I guess", "I suppose", "let's see",
-    "how do I put it", "you know what I mean"
-  ]
+
+  "discourse_markers": {
+    "like": "like",
+    "you know": "you_know",
+    "i mean": "i_mean",
+    "you know what i mean": "always",
+    "if you know what i mean": "always",
+    "basically": "clause_start",
+    "so yeah": "clause_start",
+    "okay so": "clause_start",
+    "so basically": "clause_start",
+    "actually": "comma",
+    "honestly": "comma",
+    "literally": "comma",
+    "obviously": "comma",
+    "seriously": "comma",
+    "well": "comma",
+    "anyway": "comma",
+    "anyways": "comma",
+    "you see": "comma",
+    "let's see": "comma",
+    "how do i put it": "comma",
+    "kind of": "hedge",
+    "sort of": "hedge",
+    "kinda": "hedge",
+    "sorta": "hedge",
+    "i guess": "edge",
+    "i suppose": "edge",
+    "or something": "clause_end",
+    "or something like that": "clause_end",
+    "and stuff": "clause_end",
+    "and stuff like that": "clause_end",
+    "or whatever": "clause_end",
+    "and everything": "clause_end",
+    "right": "tag",
+    "okay": "tag"
+  },
+
+  "repetitions": {
+    "enabled": true,
+    "allowed_repeats": ["that", "had", "very", "no", "bye", "really", "ha", "la", "knock", "night",
+                        "many", "more", "far", "round", "over", "again", "yes", "go", "hey", "well",
+                        "so", "is", "do", "boo", "chop", "tut", "pom", "bla", "blah", "yeah", "now"]
+  }
 }

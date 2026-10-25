@@ -1,7 +1,7 @@
 import pytest
 
-from voxaura.insights import InsightsParseError, generate_insights, parse_insights_json
-from voxaura.rag import Chunk
+from voxaura.analysis.insights import InsightsParseError, generate_insights, parse_insights_json
+from voxaura.analysis.rag import Chunk
 from tests.conftest import RecordingChatModel
 
 JSON_REPLY = """```json

@@ -30,7 +30,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from .transcription import Segment, format_timestamp
+from ..ingestion.transcription import Segment, format_timestamp
 
 # --------------------------------------------------------------------------- #
 # 1. Chunking

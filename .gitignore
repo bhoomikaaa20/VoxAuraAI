@@ -11,3 +11,6 @@ vectorstore/
 *.wav
 *.m4a
 chat_history.*
+
+# Local-only: old prototype files kept for reference, not part of the project
+_archive/
