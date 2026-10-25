@@ -10,6 +10,23 @@ Give it a recording (an upload, a live microphone recording or a YouTube link) a
 3. **Summarise** it into a title, summary, tone, key points and action items, and
 4. **Answer questions** about it in a chat, grounded in the recording itself, with cited, timestamped sources.
 
+## Screenshots
+
+**Overview:** AI summary, tone, key points, action items, speaking-rate KPIs, filler-word chart and sentiment breakdown.
+
+![Overview page with AI insights and speech analytics](docs/images/overview.png)
+
+<table>
+  <tr>
+    <td width="50%"><b>New analysis:</b> upload audio, record live, paste a YouTube link or a transcript<br><br><img src="docs/images/new-analysis.png" alt="New analysis page with the four input methods"></td>
+    <td width="50%"><b>Ask AI:</b> RAG chat with cited, timestamped sources<br><br><img src="docs/images/ask-ai.png" alt="Ask AI chat with an answer and its cited sources"></td>
+  </tr>
+  <tr>
+    <td width="50%"><b>Transcript:</b> clean, timestamped and filler-highlighted views<br><br><img src="docs/images/transcript.png" alt="Transcript page with filler words highlighted"></td>
+    <td width="50%"><b>PDF report:</b> one-click export of the insights<br><br><img src="docs/images/pdf-report.png" alt="Exported PDF insights report"></td>
+  </tr>
+</table>
+
 ## At a glance
 
 | | |
